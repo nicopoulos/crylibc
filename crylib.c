@@ -103,7 +103,7 @@ int sha_256(const char input[])
     byte_t* message_block = malloc(message_block_size);
 
     size_t i = 0;
-    // fill message block with password
+    // fill message block with input
     for (; i < input_length; i++)
     {
         message_block[i] = (byte_t)input[i];
@@ -112,20 +112,20 @@ int sha_256(const char input[])
     // append the bits <10000000> 
     message_block[i] = (byte_t)128;
 
-    // if on little-endian system, reverse each 4-byte sequence.
-    if (is_little_endian())
-    {
-        const size_t last_row = (i / 4);
-        for (size_t j = 0; j <= last_row; j++)
-        {
-            reverse_bytes(((uint32_t*)message_block) + j);
-        }
-    }
-
     // fill the remaining bytes with 0 except for the last 8
     for (i++; i < message_block_size - 8; i++)
     {
         message_block[i] = (byte_t)0;
+    }
+
+    // if on little-endian system, reverse each 4-byte sequence.
+    if (is_little_endian())
+    {
+        const size_t last_row = (input_length + 1) / 4; // the rows after last_row are exclusively filled with 0s
+        for (size_t j = 0; j <= last_row; j++)
+        {
+            reverse_bytes(((uint32_t*)message_block) + j);
+        }
     }
 
     // append the bit-length of input as 8-bytes integer
@@ -142,7 +142,7 @@ int sha_256(const char input[])
         *(uint64_t*)(message_block + i) = *size_as_byte_array;
     }
 
-    
+    /* 
     // print message block - just for debugging purposes
     puts("Message Block:");
     for (i = 0; i < message_block_size; i++)
@@ -153,47 +153,12 @@ int sha_256(const char input[])
         if ((i+1) % 4 == 0)
             putchar('\n');
     }
+    */
 
 
 
     // STEP 2: break down into 64-byte chunks
-    const size_t num_chunks = message_block_size / 64;
-
-    // repeat for each chunk:
-
-    // STEP 3: Prepare Message Schedule
-
-    // copy first chunk into message schedule
-    uint32_t message_schedule[MESSAGE_SCHEDULE_SIZE] = {0};
-    for (i = 0; i < 16; i++)
-    {
-        message_schedule[i] = ((uint32_t*)message_block)[i];
-    }
-
-
-    // STEP 4: Calculate through Message Schedule
-    for (i = 0; i <= 47; i++)
-    {
-        uint32_t w0 = message_schedule[i];
-        uint32_t w1 = message_schedule[i + 1];
-        uint32_t w9 = message_schedule[i + 9];
-        uint32_t w14 = message_schedule[i + 14];
-
-        uint32_t s0 = rightrotate(w1, 7) ^ rightrotate(w1, 18) ^ (w1 >> 3);
-        uint32_t s1 = rightrotate(w14, 17) ^ rightrotate(w14, 19) ^ (w14 >> 10);
-        message_schedule[i + 16] = w0 + s0 + w9 + s1;
-    }
-
-    // print message schedule - just for debugging purposes
-    puts("Message Schedule:");
-    for (i = 0; i < MESSAGE_SCHEDULE_SIZE; i++)
-    {
-        print_binary(((byte_t *)message_schedule)[i]);
-        putchar('\t');
-
-        if ((i+1) % 4 == 0)
-            putchar('\n');
-    }
+    const size_t num_chunks = (message_block_size / 64);
 
     // initialize hash values
     uint32_t hash_values[8];
@@ -203,7 +168,7 @@ int sha_256(const char input[])
         uint32_t fractional_bits = get_fractional_bits(temp);
         hash_values[i] = fractional_bits;
     }
-
+    /*
     puts("Hash Values:");
     for (i = 0; i < 32; i++)
     {
@@ -213,7 +178,7 @@ int sha_256(const char input[])
         if ((i+1) % 4 == 0)
             putchar('\n');
     }
-
+    */
 
     // initialize array of constants
     uint32_t constants[64];
@@ -223,7 +188,7 @@ int sha_256(const char input[])
         uint32_t fractional_bits = get_fractional_bits(temp);
         constants[i] = fractional_bits;
     }
-
+    /*
     puts("Constants:");
     for (i = 0; i < 256; i++)
     {
@@ -233,46 +198,98 @@ int sha_256(const char input[])
         if ((i+1) % 4 == 0)
             putchar('\n');
     }
-    // initialize working variables
-    uint32_t a = hash_values[0];
-    uint32_t b = hash_values[1];
-    uint32_t c = hash_values[2];
-    uint32_t d = hash_values[3];
-    uint32_t e = hash_values[4];
-    uint32_t f = hash_values[5];
-    uint32_t g = hash_values[6];
-    uint32_t h = hash_values[7];
+    */
 
-    // update working variables
-    for (i = 0; i <= 63; i++)
+    // repeat for each chunk:
+    for (size_t chunk = 0; chunk < num_chunks; chunk++)
     {
-        uint32_t s0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
-        uint32_t s1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
-        uint32_t choice = (e & f) ^ ((~e) & g);
-        uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
-        uint32_t temp1 = h + s1 + choice + constants[i] + message_schedule[i];
-        uint32_t temp2 = s0 + majority;
+        // STEP 3: Prepare Message Schedule
+        // copy chunk into message schedule
+        uint32_t message_schedule[64] = {0};
+        for (i = 0; i < 16; i++)
+        {
+            message_schedule[i] = ((uint32_t*)message_block)[(16*chunk) + i];
+        }
 
-        h = g;
-        g = f;
-        f = e;
-        e = d + temp1;
-        d = c;
-        c = b;
-        b = a;
-        a = temp1 + temp2;
+        /*
+        // print message schedule - just for debugging purposes
+        puts("Message Schedule:");
+        for (i = 0; i < 256; i++)
+        {
+            print_binary(((byte_t *)message_schedule)[i]);
+            putchar('\t');
+
+            if ((i+1) % 4 == 0)
+                putchar('\n');
+        }
+        */
+
+        // STEP 4: Calculate through Message Schedule
+        for (i = 0; i <= 47; i++)
+        {
+            uint32_t w0 = message_schedule[i];
+            uint32_t w1 = message_schedule[i + 1];
+            uint32_t w9 = message_schedule[i + 9];
+            uint32_t w14 = message_schedule[i + 14];
+
+            uint32_t s0 = rightrotate(w1, 7) ^ rightrotate(w1, 18) ^ (w1 >> 3);
+            uint32_t s1 = rightrotate(w14, 17) ^ rightrotate(w14, 19) ^ (w14 >> 10);
+            message_schedule[i + 16] = w0 + s0 + w9 + s1;
+        }
+
+        /*
+        // print message schedule - just for debugging purposes
+        puts("Message Schedule:");
+        for (i = 0; i < 256; i++)
+        {
+            print_binary(((byte_t *)message_schedule)[i]);
+            putchar('\t');
+
+            if ((i+1) % 4 == 0)
+                putchar('\n');
+        }
+        */
+
+        // initialize working variables
+        uint32_t a = hash_values[0];
+        uint32_t b = hash_values[1];
+        uint32_t c = hash_values[2];
+        uint32_t d = hash_values[3];
+        uint32_t e = hash_values[4];
+        uint32_t f = hash_values[5];
+        uint32_t g = hash_values[6];
+        uint32_t h = hash_values[7];
+
+        // update working variables
+        for (i = 0; i <= 63; i++)
+        {
+            uint32_t s0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
+            uint32_t s1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
+            uint32_t choice = (e & f) ^ ((~e) & g);
+            uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
+            uint32_t temp1 = h + s1 + choice + constants[i] + message_schedule[i];
+            uint32_t temp2 = s0 + majority;
+
+            h = g;
+            g = f;
+            f = e;
+            e = d + temp1;
+            d = c;
+            c = b;
+            b = a;
+            a = temp1 + temp2;
+        }
+
+        // add working variables to current hash values
+        hash_values[0] += a;
+        hash_values[1] += b;
+        hash_values[2] += c;
+        hash_values[3] += d;
+        hash_values[4] += e;
+        hash_values[5] += f;
+        hash_values[6] += g;
+        hash_values[7] += h;
     }
-
-    // add working variables to current hash values
-    hash_values[0] += a;
-    hash_values[1] += b;
-    hash_values[2] += c;
-    hash_values[3] += d;
-    hash_values[4] += e;
-    hash_values[5] += f;
-    hash_values[6] += g;
-    hash_values[7] += h;
-
     // the appended hash values result in the final digest
     const uint32_t* digest = hash_values;
 
