@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <math.h>
 
 // General
 typedef unsigned char byte_t;
@@ -11,9 +12,6 @@ typedef unsigned char byte_t;
 
 // for sha-256 hashing algorithm
 #define MESSAGE_SCHEDULE_SIZE 256UL // size of the message schedule in bytes (512 bit)
-
-
-
 
 // Helper Functions
 void print_binary(byte_t byte)
@@ -59,7 +57,33 @@ uint32_t rightrotate(uint32_t num, uint32_t rotation)
     return result;
 }
 
+
+uint32_t get_fractional_bits(double num) // take the first 32 bits of the fractional part of a double and return them as a 4-byte integer 
+{
+    num -= floor(num);
+    num *= pow(2, 32);
+    return (uint32_t)num; // get rid of unnecessary bytes
+}
+
 // Helper Functions
+
+
+
+
+
+
+
+
+
+// array of 32 bit prime numbers
+uint32_t primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 
+73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173,
+179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281,
+283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
+419, 421, 431, 433, 439, 443, 449, 457, 461, 453, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541};
+
+
+
 
 // sha-256 algorithm for getting hash from password
 
@@ -146,17 +170,6 @@ int sha_256(const char input[])
         message_schedule[i] = ((uint32_t*)message_block)[i];
     }
 
-    // print message schedule - just for debugging purposes
-    puts("Message Schedule:");
-    for (i = 0; i < MESSAGE_SCHEDULE_SIZE; i++)
-    {
-        print_binary(((byte_t *)message_schedule)[i]);
-        putchar('\t');
-
-        if ((i+1) % 4 == 0)
-            putchar('\n');
-    }
-
 
     // STEP 4: Calculate through Message Schedule
     for (i = 0; i <= 47; i++)
@@ -182,6 +195,45 @@ int sha_256(const char input[])
             putchar('\n');
     }
 
+    // initialize hash values
+    uint32_t hash_values[8];
+    for (i = 0; i < 8; i++)
+    {
+        double temp = sqrt((double)primes[i]);
+        uint32_t fractional_bits = get_fractional_bits(temp);
+        hash_values[i] = fractional_bits;
+    }
+
+    puts("Hash Values:");
+    for (i = 0; i < 32; i++)
+    {
+        print_binary(((byte_t *)hash_values)[i]);
+        putchar('\t');
+
+        if ((i+1) % 4 == 0)
+            putchar('\n');
+    }
+
+
+    // initialize array of constants
+    uint32_t constants[64];
+    for (i = 0; i < 64; i++)
+    {
+        double temp = cbrt((double)primes[i]);
+        uint32_t fractional_bits = get_fractional_bits(temp);
+        constants[i] = fractional_bits;
+    }
+
+    puts("Constants:");
+    for (i = 0; i < 256; i++)
+    {
+        print_binary(((byte_t *)constants)[i]);
+        putchar('\t');
+
+        if ((i+1) % 4 == 0)
+            putchar('\n');
+    }
+    // initialize working variables
 
 
 
