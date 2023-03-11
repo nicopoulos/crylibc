@@ -234,6 +234,55 @@ int sha_256(const char input[])
             putchar('\n');
     }
     // initialize working variables
+    uint32_t a = hash_values[0];
+    uint32_t b = hash_values[1];
+    uint32_t c = hash_values[2];
+    uint32_t d = hash_values[3];
+    uint32_t e = hash_values[4];
+    uint32_t f = hash_values[5];
+    uint32_t g = hash_values[6];
+    uint32_t h = hash_values[7];
+
+    // update working variables
+    for (i = 0; i <= 63; i++)
+    {
+        uint32_t s0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
+        uint32_t s1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
+        uint32_t choice = (e & f) ^ ((~e) & g);
+        uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
+        uint32_t temp1 = h + s1 + choice + constants[i] + message_schedule[i];
+        uint32_t temp2 = s0 + majority;
+
+        h = g;
+        g = f;
+        f = e;
+        e = d + temp1;
+        d = c;
+        c = b;
+        b = a;
+        a = temp1 + temp2;
+    }
+
+    // add working variables to current hash values
+    hash_values[0] += a;
+    hash_values[1] += b;
+    hash_values[2] += c;
+    hash_values[3] += d;
+    hash_values[4] += e;
+    hash_values[5] += f;
+    hash_values[6] += g;
+    hash_values[7] += h;
+
+    // the appended hash values result in the final digest
+    const uint32_t* digest = hash_values;
+
+    // print digest (for debugging only)
+    printf("Digest: ");
+    for (i = 0; i < 8; i++)
+    {
+        printf("%x", digest[i]);
+    } putchar('\n');
+
 
 
 
