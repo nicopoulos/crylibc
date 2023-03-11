@@ -10,8 +10,6 @@
 typedef unsigned char byte_t;
 
 
-// for sha-256 hashing algorithm
-#define MESSAGE_SCHEDULE_SIZE 256UL // size of the message schedule in bytes (512 bit)
 
 // Helper Functions
 void print_binary(byte_t byte)
@@ -65,6 +63,15 @@ uint32_t get_fractional_bits(double num) // take the first 32 bits of the fracti
     return (uint32_t)num; // get rid of unnecessary bytes
 }
 
+void print_hash(const byte_t* hash, const size_t size)
+{
+    for (size_t i = 0; i < size; i++)
+    {
+        printf("%x", hash[i]);
+    } putchar('\n');
+
+}
+
 // Helper Functions
 
 
@@ -87,14 +94,13 @@ uint32_t primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
 
 // sha-256 algorithm for getting hash from password
 
-int sha_256(const char input[])
+int sha_256(const byte_t input[], const size_t input_size, byte_t* digest)
 {
     // STEP 1: Prepare Message Block
 
-    const size_t input_length = strlen(input);
     size_t message_block_size = 64; // starting with 64 bytes = 512 bits
 
-    while ((long)(message_block_size - input_length - 8 - 1) < 0) // if block wouldn't be big enough to fit password + extrabyte + 8-byte integer, increase blocksize by 512 bit
+    while ((long)(message_block_size - input_size - 8 - 1) < 0) // if block wouldn't be big enough to fit password + extrabyte + 8-byte integer, increase blocksize by 512 bit
     {
         message_block_size += 64;
     }
@@ -104,7 +110,7 @@ int sha_256(const char input[])
 
     size_t i = 0;
     // fill message block with input
-    for (; i < input_length; i++)
+    for (; i < input_size; i++)
     {
         message_block[i] = (byte_t)input[i];
     }
@@ -121,7 +127,7 @@ int sha_256(const char input[])
     // if on little-endian system, reverse each 4-byte sequence.
     if (is_little_endian())
     {
-        const size_t last_row = (input_length + 1) / 4; // the rows after last_row are exclusively filled with 0s
+        const size_t last_row = (input_size + 1) / 4; // the rows after last_row are exclusively filled with 0s
         for (size_t j = 0; j <= last_row; j++)
         {
             reverse_bytes(((uint32_t*)message_block) + j);
@@ -129,7 +135,7 @@ int sha_256(const char input[])
     }
 
     // append the bit-length of input as 8-bytes integer
-    size_t message_block_bit_length = input_length * sizeof(size_t); // length in bytes to bit-length
+    size_t message_block_bit_length = input_size * sizeof(size_t); // length in bytes to bit-length
     const byte_t* size_as_byte_array = (void*)(&message_block_bit_length); // read 8-byte integer as 8 seperate bytes 
 
     if (is_little_endian())
@@ -290,32 +296,26 @@ int sha_256(const char input[])
         hash_values[6] += g;
         hash_values[7] += h;
     }
-    // the appended hash values result in the final digest
-    const uint32_t* digest = hash_values;
 
-    // print digest (for debugging only)
-    printf("Digest: ");
-    for (i = 0; i < 8; i++)
+    if (is_little_endian())
     {
-        printf("%x", digest[i]);
-    } putchar('\n');
+        for (i = 0; i < 8; i++)
+        {
+            reverse_bytes(hash_values + i);
+        }
+    }
 
 
-
-
-
-
+    for (i = 0; i < 32; i++)
+    {
+        digest[i] = ((byte_t*)hash_values)[i];
+    }
 
 
     // free allocated memory
     free(message_block);
 
-
     return 0;
-
-
-
-
 
 }
 
