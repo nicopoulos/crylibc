@@ -1,4 +1,7 @@
 # CryLibC - Cryptographic Library for the C Language
 
-C-library created for cryptographic functions for another project of mine.
-**DO NOT USE - STILL IN DEVELOPMENT AND NOT FUNCTIONAL**
+This is a C-library containing cryptographic functions, mainly for personal use.
+
+### March 23: 
+Finally the first algorithm - sha-256 - has been implemented, which means that the library can be used now,
+be it only for one function.
